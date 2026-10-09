@@ -37,21 +37,9 @@ ab = load_backend()
 ERRORS = (ab.DisplayError, OSError, ValueError)
 
 
-def display_title(d):
-    if d.kind == "hidraw":
-        try:
-            uevent = ab._read(f"/sys/class/hidraw/{d.name}/device/uevent")
-            for line in uevent.splitlines():
-                if line.startswith("HID_NAME="):
-                    return line.split("=", 1)[1]
-        except OSError:
-            pass
-    return "Apple Cinema Display"
-
-
 class DisplayRow(Adw.ActionRow):
     def __init__(self, display, on_error):
-        super().__init__(title=display_title(display), subtitle=display.name)
+        super().__init__(title=display.model, subtitle=display.name)
         self.display = display
         self.on_error = on_error
         self.pending = None

@@ -31,7 +31,8 @@ studio-brightness get         # 0-100
 studio-brightness set 60      # also accepts 60%, +10, -10
 studio-brightness up          # +10%, or: up 5
 studio-brightness down
-studio-brightness --notify up # also show a desktop notification
+studio-brightness --osd up    # also show the on-screen brightness indicator
+studio-brightness --notify up # or a desktop notification instead
 ```
 
 There's also a small GTK4 window with one slider per display: open **Display
@@ -40,6 +41,29 @@ libadwaita for Python (`gir1.2-adw-1`, already present on GNOME desktops).
 
 With several displays, every command applies to all of them unless you pick one with
 `-d NAME` (the name shown by `list`).
+
+The keyboard shortcuts show an on-screen indicator, a small bar at the bottom of the
+screen like GNOME's own. GNOME won't let other programs use its built-in one, so this is
+a separate popup drawn through XWayland, which takes no keyboard focus and lets clicks
+pass through. It needs GTK3 for Python, which GNOME desktops already have.
+
+## Supported displays
+
+| Display | USB ID | How |
+|---|---|---|
+| Apple Cinema Displays (LED, aluminium) | 05ac:9218, 9219, 921c, 921d, 9221, 9222, 9226, 9236 | kernel `appledisplay` driver |
+| Thunderbolt Display | 05ac:9227 | HID |
+| Studio Display | 05ac:1114 | HID |
+| Studio Display (Gen 2) | 05ac:1118 | HID |
+| Studio Display XDR | 05ac:1116 | HID |
+| Pro Display XDR | 05ac:9243 | HID |
+| Other Apple displays | 05ac:* | HID, if the display has the brightness control |
+
+Tested on the LED Cinema Display (9226). The HID models follow the protocol documented by
+Studio Brightness ++ (32-bit brightness, range 400-60000) but haven't been tried on Linux yet;
+reports are welcome. On a Studio Display, brightness only changes in the default
+"Apple Display" reference mode, as calibrated modes lock it. A display whose ID isn't in
+`70-studio-brightness.rules` is detected but needs its ID added there for permission.
 
 ## How it works
 

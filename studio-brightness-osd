@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""On-screen brightness indicator: `studio-brightness-osd 60` shows 60% for a moment.
+
+GNOME doesn't let other programs use its own OSD, and a Wayland window can neither place
+itself nor stay out of the keyboard focus. So this is an X11 popup shown through XWayland:
+it takes no focus, ignores clicks and sits above everything. Repeated calls update the
+window that's already up instead of opening another one.
+"""
+
+import os
+import sys
+
+from gi.repository import Gio, GLib
+
+APP_ID = "io.github.mfat.StudioBrightness.Osd"
+SHOW_MS = 1500
+FADE_STEP = 0.1
+FADE_INTERVAL_MS = 16
+
+CSS = b"""
+window { background-color: transparent; }
+.osd {
+  background-color: rgba(32, 32, 32, 0.88);
+  border-radius: 999px;
+  padding: 14px 24px;
+  color: #ffffff;
+}
+.osd label { font-weight: bold; font-feature-settings: "tnum"; min-width: 3.2em; }
+.osd levelbar trough { min-height: 6px; border: none; border-radius: 3px;
+                       background-color: rgba(255, 255, 255, 0.2); padding: 0; }
+.osd levelbar block { min-height: 6px; border: none; border-radius: 3px; }
+.osd levelbar block.filled { background-color: #ffffff; }
+.osd levelbar block.empty { background-color: transparent; }
+"""
+
+
+class Osd:
+    def __init__(self):
+        import cairo
+        import gi
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gdk, Gtk
+        self.Gdk, self.Gtk = Gdk, Gtk
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS)
+        screen = Gdk.Screen.get_default()
+        Gtk.StyleContext.add_provider_for_screen(
+            screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+        self.win = Gtk.Window(type=Gtk.WindowType.POPUP)
+        self.win.set_app_paintable(True)
+        visual = screen.get_rgba_visual()
+        if visual:
+            self.win.set_visual(visual)
+        self.win.set_accept_focus(False)
+        self.win.set_keep_above(True)
+
+        box = Gtk.Box(spacing=16)
+        box.get_style_context().add_class("osd")
+        icon = Gtk.Image.new_from_icon_name("display-brightness-symbolic", Gtk.IconSize.DND)
+        self.bar = Gtk.LevelBar(min_value=0, max_value=100, valign=Gtk.Align.CENTER)
+        self.bar.set_mode(Gtk.LevelBarMode.CONTINUOUS)
+        for name in ("low", "high", "full"):  # drop the theme's colour offsets
+            self.bar.remove_offset_value(name)
+        self.bar.set_size_request(220, -1)
+        self.label = Gtk.Label(xalign=1)
+        box.pack_start(icon, False, False, 0)
+        box.pack_start(self.bar, True, True, 0)
+        box.pack_start(self.label, False, False, 0)
+        self.win.add(box)
+        self.win.connect("realize", lambda w: w.input_shape_combine_region(cairo.Region()))
+
+        self.hide_id = 0
+        self.fade_id = 0
+
+    def show(self, pct):
+        self.bar.set_value(pct)
+        self.label.set_text(f"{pct}%")
+        self._cancel()
+        self.Gtk.Widget.set_opacity(self.win, 1.0)
+        self.win.show_all()
+        self._place()
+        self.hide_id = GLib.timeout_add(SHOW_MS, self._start_fade)
+
+    def _place(self):
+        display = self.Gdk.Display.get_default()
+        monitor = display.get_primary_monitor() or display.get_monitor(0)
+        geo = monitor.get_geometry()
+        width, height = self.win.get_size()
+        self.win.move(geo.x + (geo.width - width) // 2,
+                      geo.y + geo.height - height - geo.height // 8)
+
+    def _start_fade(self):
+        self.hide_id = 0
+        self.fade_id = GLib.timeout_add(FADE_INTERVAL_MS, self._fade)
+        return GLib.SOURCE_REMOVE
+
+    def _fade(self):
+        opacity = self.Gtk.Widget.get_opacity(self.win) - FADE_STEP
+        if opacity > 0:
+            self.Gtk.Widget.set_opacity(self.win, opacity)
+            return GLib.SOURCE_CONTINUE
+        self.fade_id = 0
+        self.win.hide()
+        self.on_hidden()
+        return GLib.SOURCE_REMOVE
+
+    def _cancel(self):
+        for attr in ("hide_id", "fade_id"):
+            if getattr(self, attr):
+                GLib.source_remove(getattr(self, attr))
+                setattr(self, attr, 0)
+
+
+class App(Gio.Application):
+    def __init__(self):
+        super().__init__(application_id=APP_ID,
+                         flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
+        self.osd = None
+        self.held = False
+
+    def do_command_line(self, command_line):
+        args = command_line.get_arguments()[1:]
+        try:
+            pct = max(0, min(100, round(float(args[0].rstrip("%")))))
+        except (IndexError, ValueError):
+            command_line.printerr("usage: studio-brightness-osd PERCENT\n")
+            return 2
+        if self.osd is None:
+            # Only the first (primary) instance loads GTK; later calls just forward here.
+            os.environ["GDK_BACKEND"] = "x11"
+            self.osd = Osd()
+            self.osd.on_hidden = self._release
+        if not self.held:
+            self.hold()
+            self.held = True
+        self.osd.show(pct)
+        return 0
+
+    def _release(self):
+        if self.held:
+            self.held = False
+            self.release()
+
+
+if __name__ == "__main__":
+    sys.exit(App().run(sys.argv))

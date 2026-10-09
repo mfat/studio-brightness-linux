@@ -11,6 +11,7 @@ cd "$(dirname "$0")"
 
 BIN="$HOME/.local/bin/studio-brightness"
 GUI="$HOME/.local/bin/studio-brightness-gui"
+OSD="$HOME/.local/bin/studio-brightness-osd"
 DESKTOP="$HOME/.local/share/applications/studio-brightness.desktop"
 RULE=/etc/udev/rules.d/70-studio-brightness.rules
 SCHEMA=org.gnome.settings-daemon.plugins.media-keys
@@ -85,7 +86,7 @@ remove_legacy() {
 remove_legacy
 
 if [[ $uninstall -eq 1 ]]; then
-  rm -f "$BIN" "$GUI" "$DESKTOP"
+  rm -f "$BIN" "$GUI" "$OSD" "$DESKTOP"
   sudo rm -f "$RULE"
   sudo udevadm control --reload-rules
   if have_gsettings; then
@@ -99,6 +100,7 @@ fi
 install -Dm755 studio-brightness "$BIN"
 echo "Installed $BIN"
 
+install -Dm755 studio-brightness-osd "$OSD"
 install -Dm755 studio-brightness-gui "$GUI"
 sed "s|^Exec=.*|Exec=$GUI|" studio-brightness.desktop > "$DESKTOP"
 echo "Installed $GUI (\"Display Brightness\" in the app menu; needs GTK4 + libadwaita)"
@@ -122,8 +124,8 @@ fi
 
 if [[ $shortcuts -eq 1 ]]; then
   if have_gsettings; then
-    add_binding studio-brightness-up "Display brightness up" "$BIN up --notify" "$up_key"
-    add_binding studio-brightness-down "Display brightness down" "$BIN down --notify" "$down_key"
+    add_binding studio-brightness-up "Display brightness up" "$BIN up --osd" "$up_key"
+    add_binding studio-brightness-down "Display brightness down" "$BIN down --osd" "$down_key"
     echo "GNOME shortcuts: $up_key = brighter, $down_key = dimmer"
   else
     echo "GNOME not detected, skipping keyboard shortcuts."

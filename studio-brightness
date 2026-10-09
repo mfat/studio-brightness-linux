@@ -18,6 +18,16 @@ import sys
 APPLE_VID = 0x05AC
 BRIGHTNESS_USAGE = (0x0082 << 16) | 0x0010
 
+# Display names by USB product ID. Anything else uses the USB product string, so unknown
+# Apple displays still work as long as they carry the HID brightness control.
+MODELS = {
+    0x1114: "Studio Display",
+    0x1118: "Studio Display (Gen 2)",
+    0x1116: "Studio Display XDR",
+    0x9243: "Pro Display XDR",
+    0x9227: "Thunderbolt Display",
+}
+
 
 class DisplayError(Exception):
     pass
@@ -32,11 +42,16 @@ class BacklightDisplay:
     def __init__(self, path):
         self.path = path
         self.name = os.path.basename(path)
+        # The driver registers its backlight with no parent device, so find the display through
+        # the USB interface bound to it. That only identifies it when there's just one.
+        ifaces = glob.glob("/sys/bus/usb/drivers/appledisplay/*:*")
+        self.pid, self.model = (_usb_info(ifaces[0]) if len(ifaces) == 1
+                                else (None, "Apple Cinema Display"))
         self.lo = 0
         self.hi = int(_read(os.path.join(path, "max_brightness")))
 
     def describe(self):
-        return f"{self.name}  kernel appledisplay driver, range {self.lo}-{self.hi}"
+        return f"{self.name}  {self.model}, kernel appledisplay driver, range {self.lo}-{self.hi}"
 
     def get_raw(self):
         return int(_read(os.path.join(self.path, "actual_brightness")))
@@ -159,10 +174,11 @@ class HidrawDisplay:
         self.name = os.path.basename(sysdir)
         self.devnode = "/dev/" + self.name
         self.pid = pid
+        self.model = _usb_info(os.path.join(sysdir, "device"))[1]
         self.rid, self.offset, self.bits, self.lo, self.hi, self.length = field
 
     def describe(self):
-        return (f"{self.name}  Apple display 05ac:{self.pid:04x} over hidraw, "
+        return (f"{self.name}  {self.model} (05ac:{self.pid:04x}) over hidraw, "
                 f"report 0x{self.rid:02x}, range {self.lo}-{self.hi}")
 
     def _open(self):
@@ -171,7 +187,8 @@ class HidrawDisplay:
         except PermissionError:
             raise DisplayError(
                 f"no permission to open {self.devnode}. Install the udev rule "
-                "(./install.sh), then unplug and replug the display's USB cable.")
+                "(./install.sh), then unplug and replug the display's USB cable. If it "
+                f"still fails, product ID {self.pid:04x} may be missing from the rule.")
 
     def _get_report(self, fd):
         import fcntl
@@ -222,6 +239,23 @@ def _hid_ids(sysdir):
             _bus, vid, pid = line.split("=", 1)[1].split(":")
             return int(vid, 16), int(pid, 16)
     return None, None
+
+
+def _usb_info(sysdir):
+    """Return (product_id, model_name) of the USB device at or above a sysfs device."""
+    path = os.path.realpath(sysdir)
+    while path != "/":
+        try:
+            pid = int(_read(os.path.join(path, "idProduct")), 16)
+        except (OSError, ValueError):
+            path = os.path.dirname(path)
+            continue
+        try:
+            product = _read(os.path.join(path, "product")).strip()
+        except OSError:
+            product = ""
+        return pid, MODELS.get(pid) or product or f"Apple display 05ac:{pid:04x}"
+    return None, "Apple display"
 
 
 def discover():
@@ -290,6 +324,17 @@ def notify(pct):
         subprocess.run(base + text, capture_output=True)
 
 
+def osd(pct):
+    """Show the on-screen brightness indicator, falling back to a notification."""
+    here = os.path.dirname(os.path.realpath(__file__))
+    for exe in (os.path.join(here, "studio-brightness-osd"), shutil.which("studio-brightness-osd")):
+        if exe and os.access(exe, os.X_OK):
+            subprocess.Popen([exe, str(pct)], start_new_session=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+    notify(pct)
+
+
 def parse_args(argv):
     p = argparse.ArgumentParser(
         prog="studio-brightness",
@@ -298,6 +343,8 @@ def parse_args(argv):
                    help="only act on this display (e.g. appledisplay0, hidraw3); repeatable")
     p.add_argument("-n", "--notify", action="store_true",
                    help="show a desktop notification with the new brightness")
+    p.add_argument("-o", "--osd", action="store_true",
+                   help="show an on-screen brightness indicator")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list", help="list detected displays")
     g = sub.add_parser("get", help="print brightness in percent")
@@ -349,8 +396,11 @@ def main(argv=None):
             print(f"{d.name}: {e}", file=sys.stderr)
             status = 1
 
-    if args.notify and last_pct is not None:
-        notify(last_pct)
+    if last_pct is not None:
+        if args.osd:
+            osd(last_pct)
+        elif args.notify:
+            notify(last_pct)
     return status
 
 
