@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Display Brightness
+Name=Studio Brightness
 Comment=Brightness control for Apple Cinema, Thunderbolt and Studio displays
 Exec=studio-brightness-gui
 Icon=io.github.mfat.StudioBrightness

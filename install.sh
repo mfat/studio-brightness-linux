@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install studio-brightness, its udev rule, and GNOME keyboard shortcuts.
+# Install Studio Brightness: the studio-brightness commands, its udev rule, and GNOME keyboard shortcuts.
 #
 #   ./install.sh                         install with default shortcuts (Super+F2 / Super+F1)
 #   ./install.sh --up '<Super>F15' --down '<Super>F14'
@@ -109,7 +109,7 @@ install -Dm755 studio-brightness-gui "$GUI"
 install -Dm644 data/icons/io.github.mfat.StudioBrightness.svg "$ICON"
 install -Dm644 data/icons/io.github.mfat.StudioBrightness-symbolic.svg "$SYMBOLIC"
 sed "s|^Exec=.*|Exec=$GUI|" data/io.github.mfat.StudioBrightness.desktop > "$DESKTOP"
-echo "Installed $GUI (\"Display Brightness\" in the app menu; needs GTK4 + libadwaita)"
+echo "Installed $GUI (\"Studio Brightness\" in the app menu; needs GTK4 + libadwaita)"
 
 sudo install -Dm644 data/70-studio-brightness.rules "$RULE"
 sudo udevadm control --reload-rules
@@ -128,8 +128,8 @@ fi
 
 if [[ $shortcuts -eq 1 ]]; then
   if have_gsettings; then
-    add_binding studio-brightness-up "Display brightness up" "$BIN up --osd" "$up_key"
-    add_binding studio-brightness-down "Display brightness down" "$BIN down --osd" "$down_key"
+    add_binding studio-brightness-up "Studio Brightness up" "$BIN up --osd" "$up_key"
+    add_binding studio-brightness-down "Studio Brightness down" "$BIN down --osd" "$down_key"
     echo "GNOME shortcuts: $up_key = brighter, $down_key = dimmer"
   else
     echo "GNOME not detected, skipping keyboard shortcuts."

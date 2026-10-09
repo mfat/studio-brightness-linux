@@ -307,7 +307,7 @@ def notify(pct):
     if not shutil.which("notify-send"):
         return
     id_file = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "studio-brightness.notify-id")
-    base = ["notify-send", "-a", "Brightness", "-i", "display-brightness-symbolic",
+    base = ["notify-send", "-a", "Studio Brightness", "-i", "display-brightness-symbolic",
             "-t", "1500", "-h", f"int:value:{pct}"]
     text = ["Brightness", f"{pct}%"]
     try:

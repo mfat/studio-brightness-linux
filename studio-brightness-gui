@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small GTK4 window for studio-brightness: one brightness slider per detected Apple display.
+"""Studio Brightness window: one brightness slider per detected Apple display.
 
 Uses the `studio-brightness` script next to this file (or in ~/.local/bin) as its backend.
 """
@@ -91,7 +91,7 @@ class DisplayRow(Adw.ActionRow):
 
 class Window(Adw.ApplicationWindow):
     def __init__(self, app):
-        super().__init__(application=app, title="Display Brightness",
+        super().__init__(application=app, title="Studio Brightness",
                          default_width=520, default_height=1)
         self.rows = []
 

@@ -1,4 +1,4 @@
-# studio-brightness-linux
+# Studio Brightness
 
 Brightness control for Apple displays on Linux: Cinema Displays, the Thunderbolt
 Display, Studio Displays and the Pro Display XDR. A command-line tool (Python 3, no
@@ -54,7 +54,7 @@ studio-brightness --osd up    # also show the on-screen brightness indicator
 studio-brightness --notify up # or a desktop notification instead
 ```
 
-There's also a small GTK4 window with one slider per display: open **Display
+There's also a small GTK4 window with one slider per display: open **Studio
 Brightness** from the app menu, or run `studio-brightness-gui`. It needs GTK4 and
 libadwaita for Python (`gir1.2-adw-1`, already present on GNOME desktops).
 
@@ -79,7 +79,7 @@ pass through. It needs GTK3 for Python, which GNOME desktops already have.
 | Other Apple displays | 05ac:* | HID, if the display has the brightness control |
 
 Tested on the LED Cinema Display (9226). The HID models follow the protocol documented by
-Studio Brightness ++ (32-bit brightness, range 400-60000) but haven't been tried on Linux yet;
+the Windows app Studio Brightness ++ (32-bit brightness, range 400-60000) but haven't been tried on Linux yet;
 reports are welcome. On a Studio Display, brightness only changes in the default
 "Apple Display" reference mode, as calibrated modes lock it. A display whose ID isn't in
 `70-studio-brightness.rules` is detected but needs its ID added there for permission.
