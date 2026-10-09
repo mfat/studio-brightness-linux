@@ -22,9 +22,8 @@ sudo dnf install ./studio-brightness-linux-*.noarch.rpm
 
 On Arch, build `packaging/ArchLinux/PKGBUILD` with `makepkg -si`.
 
-Packages can't change your personal settings, so add the keyboard shortcuts yourself in
-Settings > Keyboard > Custom Shortcuts, with the commands `studio-brightness up --osd`
-and `studio-brightness down --osd`.
+Packages can't add keyboard shortcuts, because those are per-user settings, so set them up
+once as described in [Keyboard shortcuts](#keyboard-shortcuts).
 
 ### From source
 
@@ -61,10 +60,31 @@ libadwaita for Python (`gir1.2-adw-1`, already present on GNOME desktops).
 With several displays, every command applies to all of them unless you pick one with
 `-d NAME` (the name shown by `list`).
 
-The keyboard shortcuts show an on-screen indicator, a small bar at the bottom of the
-screen like GNOME's own. GNOME won't let other programs use its built-in one, so this is
-a separate popup drawn through XWayland, which takes no keyboard focus and lets clicks
-pass through. It needs GTK3 for Python, which GNOME desktops already have.
+## Keyboard shortcuts
+
+`install.sh` adds these for you. With a package, add them in Settings > Keyboard >
+Keyboard Shortcuts > Custom Shortcuts:
+
+| Name | Command | Shortcut |
+|---|---|---|
+| Studio Brightness up | `studio-brightness up --osd` | Super+F2 |
+| Studio Brightness down | `studio-brightness down --osd` | Super+F1 |
+
+You can use any keys you like.
+
+## On-screen indicator
+
+The shortcuts above show a small brightness bar at the bottom of the screen for a moment,
+like GNOME's own. You'll only see it from the shortcuts or from commands run with
+`--osd`; the window's sliders don't show it. To see it once:
+
+```sh
+studio-brightness-osd 50
+```
+
+GNOME won't let other programs use its built-in indicator, so this is a separate popup
+drawn through XWayland, which takes no keyboard focus and lets clicks pass through. It
+needs GTK3 for Python, which GNOME desktops already have.
 
 ## Supported displays
 
