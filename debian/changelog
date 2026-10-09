@@ -1,3 +1,11 @@
+studio-brightness-linux (1.0.3-1) unstable; urgency=medium
+
+  * Release v1.0.3.
+  * Add an About dialog to the window
+  * Open the window at a sensible default size
+
+ -- Mehdi <mah.fat@gmail.com>  Fri, 09 Oct 2026 16:59:54 +0000
+
 studio-brightness-linux (1.0.2-1) unstable; urgency=medium
 
   * Release v1.0.2.

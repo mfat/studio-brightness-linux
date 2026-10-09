@@ -46,6 +46,12 @@
     <category>HardwareSettings</category>
   </categories>
   <releases>
+    <release version="1.0.3" date="2026-10-09">
+      <description>
+        <p>Add an About dialog to the window</p>
+        <p>Open the window at a sensible default size</p>
+      </description>
+    </release>
     <release version="1.0.2" date="2026-10-09">
       <description>
         <p>Accept --osd, --notify and -d after the command, as in &#x27;studio-brightness up --osd&#x27;</p>
