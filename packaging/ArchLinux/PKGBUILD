@@ -14,7 +14,7 @@ checkdepends=('desktop-file-utils' 'appstream')
 optdepends=('libnotify: desktop notifications with --notify')
 install="${pkgname}.install"
 source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('ed9ac65ca896c94815ed7cef09dfdae123c3fe68ba57e9b8490c6cf0a3b2fc8d')
 
 check() {
 	make -C "${pkgname}-${pkgver}" check
