@@ -1,4 +1,7 @@
-# Studio Brightness
+# Studio Brightness Linux
+
+<img width="570" height="250" alt="image" src="https://github.com/user-attachments/assets/c278ea4e-ddf1-4edf-847a-431894dc1555" />
+
 
 Brightness control for Apple displays on Linux: Cinema Displays, the Thunderbolt
 Display, Studio Displays and the Pro Display XDR. A command-line tool (Python 3, no
