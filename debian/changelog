@@ -1,3 +1,11 @@
+studio-brightness-linux (1.0.1-1) unstable; urgency=medium
+
+  * Release v1.0.1.
+  * Use the name Studio Brightness consistently in the app menu, window,
+    notifications and shortcuts
+
+ -- Mehdi <mah.fat@gmail.com>  Fri, 09 Oct 2026 16:19:40 +0000
+
 studio-brightness-linux (1.0.0-1) unstable; urgency=medium
 
   * Initial release.
