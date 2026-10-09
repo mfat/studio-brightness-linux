@@ -1,0 +1,12 @@
+# Must sort before 73-seat-late.rules so the uaccess tag takes effect.
+
+# Raw HID access to Apple display brightness for the logged-in user.
+SUBSYSTEM=="hidraw", KERNEL=="hidraw*", ATTRS{idVendor}=="05ac", ATTRS{idProduct}=="92*|1114|1116|1118", TAG+="uaccess"
+
+# usbhid claims the Cinema Displays that the appledisplay driver knows, but the HID core
+# then binds nothing to them (no hidraw node, no backlight). Hand them to appledisplay.
+# "add" catches interfaces already bound at coldplug, "bind" catches hotplug.
+ACTION=="add|bind", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_interface", DRIVER=="usbhid", ATTRS{idVendor}=="05ac", ATTRS{idProduct}=="9218|9219|921c|921d|9221|9222|9226|9236", RUN+="/bin/sh -c '/sbin/modprobe appledisplay; echo %k > /sys/bus/usb/drivers/usbhid/unbind; echo %k > /sys/bus/usb/drivers/appledisplay/bind'"
+
+# Older Cinema Displays handled by the kernel appledisplay driver: let the video group write brightness.
+ACTION=="add", SUBSYSTEM=="backlight", KERNEL=="appledisplay*", RUN+="/bin/chgrp video /sys%p/brightness", RUN+="/bin/chmod g+w /sys%p/brightness"

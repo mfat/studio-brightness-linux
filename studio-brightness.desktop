@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Display Brightness
+Comment=Brightness control for Apple Cinema, Thunderbolt and Studio displays
+Exec=studio-brightness-gui
+Icon=display-brightness-symbolic
+Categories=Settings;HardwareSettings;GTK;
+Keywords=brightness;apple;cinema;display;monitor;
+StartupNotify=true
