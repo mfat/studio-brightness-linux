@@ -36,14 +36,24 @@ jobs:
             echo "::error::The AUR_SSH_PRIVATE_KEY secret is not set."
             exit 1
           fi
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
-          chmod 600 ~/.ssh/aur
+          # Explicit paths, passed to git via GIT_SSH_COMMAND: GitHub sets HOME=/github/home
+          # in job containers, but ssh looks in the passwd home (/root) and ignores $HOME.
+          SSH_DIR="$RUNNER_TEMP/aur-ssh"
+          install -d -m700 "$SSH_DIR"
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > "$SSH_DIR/key"
+          chmod 600 "$SSH_DIR/key"
           # Pinned rather than scanned at run time: SHA256:RFzBCUItH9LZS0cKB5UE6ceAYhBD5C8GeOBip8Z11+4,
           # the fingerprint published on https://aur.archlinux.org.
-          echo 'aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN' > ~/.ssh/known_hosts
-          printf 'Host aur.archlinux.org\n  User aur\n  IdentityFile ~/.ssh/aur\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          echo 'aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN' > "$SSH_DIR/known_hosts"
+          cat > "$SSH_DIR/config" <<CONFIG
+          Host aur.archlinux.org
+            User aur
+            IdentityFile $SSH_DIR/key
+            IdentitiesOnly yes
+            UserKnownHostsFile $SSH_DIR/known_hosts
+            StrictHostKeyChecking yes
+          CONFIG
+          echo "GIT_SSH_COMMAND=ssh -F $SSH_DIR/config" >> "$GITHUB_ENV"
 
       # makepkg refuses to run as root.
       - name: Generate .SRCINFO and verify the source checksum
