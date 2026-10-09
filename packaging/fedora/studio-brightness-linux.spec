@@ -1,5 +1,5 @@
 Name:           studio-brightness-linux
-Version:        %{?version}%{!?version:1.0.1}
+Version:        %{?version}%{!?version:1.0.2}
 Release:        1%{?dist}
 Summary:        Brightness control for Apple displays
 License:        MIT
@@ -68,6 +68,9 @@ fi
 %{_udevrulesdir}/70-studio-brightness.rules
 
 %changelog
+* Fri Oct 09 2026 Mehdi <mah.fat@gmail.com> - 1.0.2-1
+- Accept --osd, --notify and -d after the command, as in 'studio-brightness up --osd'
+
 * Fri Oct 09 2026 Mehdi <mah.fat@gmail.com> - 1.0.1-1
 - Use the name Studio Brightness consistently in the app menu, window, notifications and shortcuts
 

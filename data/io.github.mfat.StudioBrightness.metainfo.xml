@@ -46,6 +46,11 @@
     <category>HardwareSettings</category>
   </categories>
   <releases>
+    <release version="1.0.2" date="2026-10-09">
+      <description>
+        <p>Accept --osd, --notify and -d after the command, as in &#x27;studio-brightness up --osd&#x27;</p>
+      </description>
+    </release>
     <release version="1.0.1" date="2026-10-09">
       <description>
         <p>Use the name Studio Brightness consistently in the app menu, window, notifications and shortcuts</p>
