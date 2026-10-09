@@ -20,7 +20,12 @@ sudo apt install ./studio-brightness-linux_*_all.deb
 sudo dnf install ./studio-brightness-linux-*.noarch.rpm
 ```
 
-On Arch, build `packaging/ArchLinux/PKGBUILD` with `makepkg -si`.
+On Arch, install [studio-brightness-linux](https://aur.archlinux.org/packages/studio-brightness-linux)
+from the AUR:
+
+```sh
+yay -S studio-brightness-linux
+```
 
 Packages can't add keyboard shortcuts, because those are per-user settings, so set them up
 once as described in [Keyboard shortcuts](#keyboard-shortcuts).
@@ -127,7 +132,10 @@ Uninstall with `bash install.sh --uninstall`.
 
 Run the **Release** workflow from the Actions tab with the new version. It updates the
 version everywhere (`scripts/bump-version.sh`), tags, creates the GitHub release, builds
-the `.deb` and `.rpm` and attaches them, then points the Arch `PKGBUILD` at the new tag.
+the `.deb` and `.rpm` and attaches them, points the Arch `PKGBUILD` at the new tag and
+publishes it to the AUR (except for pre-releases). The **Publish to AUR** workflow can also
+be run on its own; it needs the `AUR_SSH_PRIVATE_KEY` secret, whose public key is
+registered on the AUR account.
 `make check` runs the tests and validators locally.
 
 ## Credits

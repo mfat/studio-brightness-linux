@@ -1,0 +1,79 @@
+name: Publish to AUR
+
+# Push packaging/ArchLinux to https://aur.archlinux.org/packages/studio-brightness-linux.
+# release.yml calls this after it has pointed the PKGBUILD at the new tag; run it by hand
+# to republish the PKGBUILD on main. The first push to an unused name creates the package.
+#
+# Needs the AUR_SSH_PRIVATE_KEY secret, whose public half is registered on the AUR account.
+on:
+  workflow_dispatch:
+  workflow_call:
+    secrets:
+      AUR_SSH_PRIVATE_KEY:
+        required: true
+
+jobs:
+  publish-aur:
+    runs-on: ubuntu-latest
+    # makepkg exists only on Arch.
+    container: archlinux:base-devel
+
+    steps:
+      - name: Install git and ssh
+        run: pacman -Syu --noconfirm --needed git openssh
+
+      # release.yml pushes the PKGBUILD update to main just before calling this.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up SSH for AUR
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          set -eu
+          if [ -z "$AUR_SSH_PRIVATE_KEY" ]; then
+            echo "::error::The AUR_SSH_PRIVATE_KEY secret is not set."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          # Pinned rather than scanned at run time: SHA256:RFzBCUItH9LZS0cKB5UE6ceAYhBD5C8GeOBip8Z11+4,
+          # the fingerprint published on https://aur.archlinux.org.
+          echo 'aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN' > ~/.ssh/known_hosts
+          printf 'Host aur.archlinux.org\n  User aur\n  IdentityFile ~/.ssh/aur\n  IdentitiesOnly yes\n' > ~/.ssh/config
+
+      # makepkg refuses to run as root.
+      - name: Generate .SRCINFO and verify the source checksum
+        run: |
+          set -eu
+          useradd -m builder
+          install -d -o builder /tmp/pkg
+          install -o builder -m644 packaging/ArchLinux/* /tmp/pkg/
+          cd /tmp/pkg
+          # Downloads the release tarball and checks it against sha256sums, so a stale
+          # checksum fails here instead of for every AUR user.
+          su builder -c 'makepkg --verifysource --noconfirm'
+          su builder -c 'makepkg --printsrcinfo' > .SRCINFO
+          cat .SRCINFO
+
+      - name: Push to AUR
+        run: |
+          set -eu
+          git clone ssh://aur@aur.archlinux.org/studio-brightness-linux.git /tmp/aur
+          cp /tmp/pkg/PKGBUILD /tmp/pkg/studio-brightness-linux.install /tmp/pkg/.SRCINFO /tmp/aur/
+          cd /tmp/aur
+          git config user.name 'Mehdi'
+          git config user.email 'mah.fat@gmail.com'
+          git add PKGBUILD studio-brightness-linux.install .SRCINFO
+          if git diff --cached --quiet; then
+            echo "AUR is already up to date."
+            exit 0
+          fi
+          VERSION=$(sed -n 's/^\tpkgver = //p' .SRCINFO)-$(sed -n 's/^\tpkgrel = //p' .SRCINFO)
+          git commit -m "Update to $VERSION"
+          # AUR only accepts the master branch.
+          git push origin HEAD:master
+          echo "Published $VERSION: https://aur.archlinux.org/packages/studio-brightness-linux"

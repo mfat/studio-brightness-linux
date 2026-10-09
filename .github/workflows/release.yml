@@ -124,3 +124,11 @@ jobs:
     uses: ./.github/workflows/build-rpm.yml
     with:
       tag: ${{ needs.release.outputs.tag }}
+
+  # Pre-releases stay off AUR, where every user would get them.
+  publish-aur:
+    needs: release
+    if: ${{ !inputs.prerelease }}
+    uses: ./.github/workflows/publish-aur.yml
+    secrets:
+      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
