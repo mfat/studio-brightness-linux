@@ -1,0 +1,71 @@
+.TH STUDIO-BRIGHTNESS 1 "October 2026" "studio-brightness 1.0.0" "User Commands"
+.SH NAME
+studio-brightness, studio-brightness-gui, studio-brightness-osd \- brightness control for Apple displays
+.SH SYNOPSIS
+.B studio-brightness
+.RB [ \-d
+.IR NAME ]
+.RB [ \-\-osd | \-\-notify ]
+.BR list | get | set | up | down
+.RI [ VALUE ]
+.br
+.B studio-brightness-gui
+.br
+.B studio-brightness-osd
+.I PERCENT
+.SH DESCRIPTION
+.B studio-brightness
+gets and sets the brightness of Apple Cinema, Thunderbolt and Studio Displays and the
+Pro Display XDR. These displays have no DDC/CI; brightness is sent over the display's
+USB cable, which must be connected to the computer.
+.PP
+Displays known to the kernel
+.B appledisplay
+driver are controlled through
+.IR /sys/class/backlight/appledisplay* ;
+all others through HID feature reports on
+.IR /dev/hidraw* .
+.PP
+.B studio-brightness-gui
+opens a window with one brightness slider per display.
+.B studio-brightness-osd
+shows an on-screen brightness indicator for a moment; it is what
+.B \-\-osd
+runs.
+.SH COMMANDS
+.TP
+.B list
+Show detected displays and which backend each uses.
+.TP
+.BR get " [" \-\-raw ]
+Print the brightness in percent, or the raw hardware value.
+.TP
+.BI set " VALUE"
+Set the brightness. Accepts 60, 60%, +10 or \-10.
+.TP
+.BR up " [" \fISTEP\fR "], " down " [" \fISTEP\fR ]
+Change the brightness by STEP percent, 10 by default.
+.SH OPTIONS
+.TP
+.BI \-d " NAME" "\fR, \fB\-\-display " NAME
+Act only on this display, as named by
+.BR list .
+May be repeated. Without it, every command applies to all displays.
+.TP
+.BR \-o ", " \-\-osd
+Show the on-screen indicator with the new brightness.
+.TP
+.BR \-n ", " \-\-notify
+Show a desktop notification with the new brightness.
+.TP
+.B \-\-version
+Print the version.
+.SH FILES
+.TP
+.I /usr/lib/udev/rules.d/70-studio-brightness.rules
+Gives the logged-in user access to the displays and hands Cinema Displays from
+usbhid to the appledisplay driver.
+.SH EXIT STATUS
+0 on success, 1 if no display was found or a display could not be controlled.
+.SH SEE ALSO
+https://github.com/mfat/studio-brightness-linux

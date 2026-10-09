@@ -9,12 +9,31 @@ That cable must be plugged into the computer.
 
 ## Install
 
+### Packages
+
+Download the `.deb` (Debian, Ubuntu) or `.rpm` (Fedora) from the
+[latest release](https://github.com/mfat/studio-brightness-linux/releases/latest) and
+install it:
+
+```sh
+sudo apt install ./studio-brightness-linux_*_all.deb
+sudo dnf install ./studio-brightness-linux-*.noarch.rpm
+```
+
+On Arch, build `packaging/ArchLinux/PKGBUILD` with `makepkg -si`.
+
+Packages can't change your personal settings, so add the keyboard shortcuts yourself in
+Settings > Keyboard > Custom Shortcuts, with the commands `studio-brightness up --osd`
+and `studio-brightness down --osd`.
+
+### From source
+
 ```sh
 bash install.sh
 ```
 
-This copies the tool to `~/.local/bin`, installs a udev rule so you don't need root,
-and adds GNOME shortcuts: **Super+F2** brighter, **Super+F1** dimmer. To use other keys:
+This installs to `~/.local/bin` and `/etc/udev/rules.d`, and adds GNOME shortcuts:
+**Super+F2** brighter, **Super+F1** dimmer. To use other keys:
 
 ```sh
 bash install.sh --up '<Super>Page_Up' --down '<Super>Page_Down'
@@ -83,6 +102,13 @@ reports are welcome. On a Studio Display, brightness only changes in the default
   in if it added you to the `video` group.
 
 Uninstall with `bash install.sh --uninstall`.
+
+## Releasing
+
+Run the **Release** workflow from the Actions tab with the new version. It updates the
+version everywhere (`scripts/bump-version.sh`), tags, creates the GitHub release, builds
+the `.deb` and `.rpm` and attaches them, then points the Arch `PKGBUILD` at the new tag.
+`make check` runs the tests and validators locally.
 
 ## Credits
 

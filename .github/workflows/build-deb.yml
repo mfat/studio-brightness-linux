@@ -1,0 +1,104 @@
+name: Build Debian Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+  # Called by release.yml right after it tags: a tag pushed with GITHUB_TOKEN does not
+  # trigger the `push: tags` event, so the release workflow runs this directly.
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name) || '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG || github.ref }}
+
+      # Build deps come from debian/control itself, so this workflow can't drift from it.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y devscripts equivs lintian
+          sudo mk-build-deps --install --remove \
+            --tool 'apt-get -y --no-install-recommends' debian/control
+
+      # debian/changelog is the version of record for the .deb; scripts/bump-version.sh
+      # keeps it in step with the others. A tag that disagrees means a missed bump.
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(dpkg-parsechangelog -S Version)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ -n "$TAG" ] && [ "${VERSION%-*}" != "${TAG#v}" ]; then
+            echo "::error::debian/changelog is at $VERSION but the tag is $TAG"
+            exit 1
+          fi
+          echo "Building studio-brightness-linux $VERSION"
+
+      # dh runs the Makefile's install and check targets (see debian/rules).
+      - name: Build package
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Collect packages
+        run: |
+          mkdir -p artifacts
+          mv ../*.deb artifacts/
+          ls -la artifacts/
+
+      - name: Verify package contents
+        run: |
+          set -eu
+          contents=$(dpkg-deb --contents artifacts/*.deb)
+          for path in \
+            ./usr/bin/studio-brightness \
+            ./usr/bin/studio-brightness-gui \
+            ./usr/bin/studio-brightness-osd \
+            ./usr/lib/udev/rules.d/70-studio-brightness.rules \
+            ./usr/share/applications/io.github.mfat.StudioBrightness.desktop \
+            ./usr/share/metainfo/io.github.mfat.StudioBrightness.metainfo.xml \
+            ./usr/share/man/man1/studio-brightness.1.gz \
+            ./usr/share/icons/hicolor/scalable/apps/io.github.mfat.StudioBrightness.svg \
+          ; do
+            grep -q " $path\$" <<<"$contents" || { echo "::error::missing $path"; exit 1; }
+          done
+          if grep -qE '__pycache__|/tests/' <<<"$contents"; then
+            echo "::error::build-only files ship in the .deb"; exit 1
+          fi
+          echo "package contents verified"
+
+      - name: Lintian
+        run: lintian --tag-display-limit 0 artifacts/*.deb
+
+      - name: Show package info
+        run: dpkg-deb --info artifacts/*.deb
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ steps.version.outputs.version }}
+          path: artifacts/*.deb
+
+      # release.yml creates the release first; a hand-pushed tag may not have one yet,
+      # and the RPM job may be creating it at the same moment, hence the second look.
+      - name: Attach to GitHub release
+        if: env.TAG != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --verify-tag --title "Studio Brightness $TAG" --generate-notes \
+            || gh release view "$TAG" >/dev/null
+          gh release upload "$TAG" artifacts/*.deb --clobber

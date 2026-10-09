@@ -1,0 +1,3 @@
+# The only file under /usr/lib is the udev rule, which is where udev rules belong
+# (%{_udevrulesdir}); there are no binaries in this noarch package to put next to it.
+addFilter("only-non-binary-in-usr-lib")

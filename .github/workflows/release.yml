@@ -1,0 +1,126 @@
+name: Release
+
+# Bump the version on main, tag, create the GitHub release, then build and attach the
+# .deb and .rpm. Run it from the Actions tab.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New version, e.g. 1.0.1'
+        required: true
+        type: string
+      changelog:
+        description: 'Release notes, one per line. Leave empty to use the commit subjects since the last release.'
+        required: false
+        type: string
+      prerelease:
+        description: 'Mark the GitHub release as a pre-release'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.check.outputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      # dch writes debian/changelog.
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y devscripts
+
+      - name: Configure git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Validate the version
+        id: check
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -eu
+          VERSION=${INPUT_VERSION#v}
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "::error::Tag v$VERSION already exists."
+            exit 1
+          fi
+          PREVIOUS=$(scripts/bump-version.sh --check "$VERSION")
+          echo "Releasing $PREVIOUS -> $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble the changelog
+        env:
+          INPUT_CHANGELOG: ${{ inputs.changelog }}
+        run: |
+          set -eu
+          NOTES="$RUNNER_TEMP/changelog.txt"
+          if [ -n "${INPUT_CHANGELOG//[[:space:]]/}" ]; then
+            printf '%s\n' "$INPUT_CHANGELOG" > "$NOTES"
+          else
+            # Commit subjects since the last tag (or all of them before the first),
+            # minus housekeeping.
+            RANGE=HEAD
+            LAST=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
+            [ -n "$LAST" ] && RANGE="$LAST..HEAD"
+            git log --no-merges --pretty=%s "$RANGE" \
+              | grep -vEi '^(chore|ci|test|docs)[(:]|^Release v' > "$NOTES" || true
+          fi
+          if [ ! -s "$NOTES" ]; then
+            echo "::error::The changelog is empty and nothing could be derived from the commits."
+            exit 1
+          fi
+          cat "$NOTES"
+
+      - name: Bump, commit and tag
+        run: |
+          set -eu
+          VERSION='${{ steps.check.outputs.version }}'
+          scripts/bump-version.sh "$VERSION" < "$RUNNER_TEMP/changelog.txt"
+          git commit -am "Release v$VERSION"
+          git tag -a "v$VERSION" -m "Studio Brightness v$VERSION" -m "$(cat "$RUNNER_TEMP/changelog.txt")"
+          git push origin main "v$VERSION"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ARGS=(--verify-tag --title "Studio Brightness v${{ steps.check.outputs.version }}"
+                --notes-file "$RUNNER_TEMP/changelog.txt")
+          if [ '${{ inputs.prerelease }}' = 'true' ]; then
+            ARGS+=(--prerelease --latest=false)
+          fi
+          gh release create '${{ steps.check.outputs.tag }}' "${ARGS[@]}"
+
+      # After the tag exists: the checksum covers the tarball GitHub generates for it.
+      - name: Update the Arch PKGBUILD
+        run: |
+          set -eu
+          VERSION='${{ steps.check.outputs.version }}'
+          scripts/update-arch-pkgbuild.sh "$VERSION"
+          git commit -am "Update Arch PKGBUILD for v$VERSION"
+          git push origin main
+
+  build-deb:
+    needs: release
+    uses: ./.github/workflows/build-deb.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+
+  build-rpm:
+    needs: release
+    uses: ./.github/workflows/build-rpm.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}

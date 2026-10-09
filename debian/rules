@@ -1,0 +1,7 @@
+#!/usr/bin/make -f
+# The upstream Makefile installs the scripts, the desktop entry and the udev rule;
+# dh_python3 rewrites the scripts' env shebangs to /usr/bin/python3, and
+# dh_auto_test runs `make check` (unit tests and the desktop-entry validator).
+
+%:
+	dh $@ --with python3

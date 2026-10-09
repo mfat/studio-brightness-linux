@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/*.substvars
+debian/studio-brightness-linux/

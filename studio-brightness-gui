@@ -133,6 +133,7 @@ class Window(Adw.ApplicationWindow):
 
 
 def main():
+    Gtk.Window.set_default_icon_name(APP_ID)
     app = Adw.Application(application_id=APP_ID)
     app.connect("activate", lambda a: (a.get_active_window() or Window(a)).present())
     return app.run(sys.argv)

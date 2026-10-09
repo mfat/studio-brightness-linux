@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.mfat.StudioBrightness</id>
+  <name>Display Brightness</name>
+  <summary>Brightness control for Apple displays</summary>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.mfat">
+    <name>Mehdi</name>
+  </developer>
+  <description>
+    <p>
+      Controls the brightness of Apple Cinema, Thunderbolt and Studio Displays and the
+      Pro Display XDR on Linux. These displays have no DDC/CI, so brightness travels over
+      their USB cable.
+    </p>
+    <ul>
+      <li>A window with one brightness slider per display</li>
+      <li>A command-line tool for scripts and keyboard shortcuts</li>
+      <li>An on-screen brightness indicator</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.mfat.StudioBrightness.desktop</launchable>
+  <url type="homepage">https://github.com/mfat/studio-brightness-linux</url>
+  <url type="bugtracker">https://github.com/mfat/studio-brightness-linux/issues</url>
+  <content_rating type="oars-1.1"/>
+  <provides>
+    <binary>studio-brightness</binary>
+    <binary>studio-brightness-gui</binary>
+    <modalias>usb:v05ACp9218d*</modalias>
+    <modalias>usb:v05ACp9219d*</modalias>
+    <modalias>usb:v05ACp921Cd*</modalias>
+    <modalias>usb:v05ACp921Dd*</modalias>
+    <modalias>usb:v05ACp9221d*</modalias>
+    <modalias>usb:v05ACp9222d*</modalias>
+    <modalias>usb:v05ACp9226d*</modalias>
+    <modalias>usb:v05ACp9227d*</modalias>
+    <modalias>usb:v05ACp9236d*</modalias>
+    <modalias>usb:v05ACp9243d*</modalias>
+    <modalias>usb:v05ACp1114d*</modalias>
+    <modalias>usb:v05ACp1116d*</modalias>
+    <modalias>usb:v05ACp1118d*</modalias>
+  </provides>
+  <categories>
+    <category>Settings</category>
+    <category>HardwareSettings</category>
+  </categories>
+  <releases>
+    <release version="1.0.0" date="2026-10-09">
+      <description>
+        <p>Initial release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

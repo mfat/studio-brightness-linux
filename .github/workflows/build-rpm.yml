@@ -1,0 +1,114 @@
+name: Build RPM Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+  # Called by release.yml right after it tags (see build-deb.yml).
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-rpm:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    env:
+      TAG: ${{ inputs.tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name) || '' }}
+
+    steps:
+      # Before the checkout: without git, actions/checkout falls back to a REST tarball
+      # with no .git for `git archive` to work from. gh attaches the RPM to the release,
+      # and the langpack stops rpmlint warning about a missing en_US locale.
+      - name: Install git and gh
+        run: dnf install -y git-core gh glibc-langpack-en
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG || github.ref }}
+
+      - name: Install build dependencies
+        run: |
+          dnf install -y rpm-build rpmdevtools rpmlint dnf5-plugins
+          dnf builddep -y packaging/fedora/studio-brightness-linux.spec
+
+      # The spec is the version of record for the RPM; scripts/bump-version.sh keeps it
+      # in step with the others.
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(rpmspec -q --srpm --qf '%{version}\n' packaging/fedora/studio-brightness-linux.spec)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ -n "$TAG" ] && [ "$VERSION" != "${TAG#v}" ]; then
+            echo "::error::the spec is at $VERSION but the tag is $TAG"
+            exit 1
+          fi
+          echo "Building studio-brightness-linux $VERSION"
+
+      - name: Create source tarball
+        run: |
+          set -eu
+          rpmdev-setuptree
+          VER='${{ steps.version.outputs.version }}'
+          git config --global --add safe.directory "$PWD"
+          git archive --format=tar.gz --prefix="studio-brightness-linux-${VER}/" \
+            -o ~/rpmbuild/SOURCES/studio-brightness-linux-${VER}.tar.gz HEAD
+
+      # %check runs the Makefile's check target.
+      - name: Build RPM package
+        run: |
+          rpmbuild -ba packaging/fedora/studio-brightness-linux.spec
+          mkdir -p artifacts
+          find ~/rpmbuild/RPMS ~/rpmbuild/SRPMS -name '*.rpm' -exec cp {} artifacts/ \;
+          ls -la artifacts/
+
+      - name: Verify package contents
+        run: |
+          set -eu
+          contents=$(rpm -qlp artifacts/*.noarch.rpm)
+          for path in \
+            /usr/bin/studio-brightness \
+            /usr/bin/studio-brightness-gui \
+            /usr/bin/studio-brightness-osd \
+            /usr/lib/udev/rules.d/70-studio-brightness.rules \
+            /usr/share/applications/io.github.mfat.StudioBrightness.desktop \
+            /usr/share/metainfo/io.github.mfat.StudioBrightness.metainfo.xml \
+            /usr/share/man/man1/studio-brightness.1.gz \
+            /usr/share/icons/hicolor/scalable/apps/io.github.mfat.StudioBrightness.svg \
+          ; do
+            grep -qx "$path" <<<"$contents" || { echo "::error::missing $path"; exit 1; }
+          done
+          echo "package contents verified"
+
+      # Fatal: anything genuinely inapplicable belongs in the rpmlintrc, with the reason.
+      - name: Rpmlint
+        run: rpmlint -r packaging/fedora/studio-brightness-linux.rpmlintrc artifacts/*.rpm
+
+      - name: Show package info
+        run: rpm -qip artifacts/*.noarch.rpm
+
+      # The SRPM too, so anyone can `rpmbuild --rebuild` it or feed it to COPR.
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-${{ steps.version.outputs.version }}
+          path: |
+            artifacts/*.noarch.rpm
+            artifacts/*.src.rpm
+
+      - name: Attach to GitHub release
+        if: env.TAG != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config --global --add safe.directory "$PWD"
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --verify-tag --title "Studio Brightness $TAG" --generate-notes \
+            || gh release view "$TAG" >/dev/null
+          gh release upload "$TAG" artifacts/*.noarch.rpm --clobber

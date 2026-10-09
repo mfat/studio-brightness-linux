@@ -12,7 +12,10 @@ cd "$(dirname "$0")"
 BIN="$HOME/.local/bin/studio-brightness"
 GUI="$HOME/.local/bin/studio-brightness-gui"
 OSD="$HOME/.local/bin/studio-brightness-osd"
-DESKTOP="$HOME/.local/share/applications/studio-brightness.desktop"
+DESKTOP="$HOME/.local/share/applications/io.github.mfat.StudioBrightness.desktop"
+ICONS="$HOME/.local/share/icons/hicolor"
+ICON="$ICONS/scalable/apps/io.github.mfat.StudioBrightness.svg"
+SYMBOLIC="$ICONS/symbolic/apps/io.github.mfat.StudioBrightness-symbolic.svg"
 RULE=/etc/udev/rules.d/70-studio-brightness.rules
 SCHEMA=org.gnome.settings-daemon.plugins.media-keys
 KB_BASE=/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings
@@ -75,7 +78,8 @@ remove_binding() { # id
 # Remove an install from before the rename to studio-brightness.
 remove_legacy() {
   rm -f "$HOME/.local/bin/apple-brightness" "$HOME/.local/bin/apple-brightness-gui" \
-        "$HOME/.local/share/applications/apple-brightness.desktop"
+        "$HOME/.local/share/applications/apple-brightness.desktop" \
+        "$HOME/.local/share/applications/studio-brightness.desktop"
   [[ -e /etc/udev/rules.d/70-apple-brightness.rules ]] && sudo rm -f /etc/udev/rules.d/70-apple-brightness.rules
   if have_gsettings && [[ $(kb_list) == *apple-brightness* ]]; then
     remove_binding apple-brightness-up
@@ -86,7 +90,7 @@ remove_legacy() {
 remove_legacy
 
 if [[ $uninstall -eq 1 ]]; then
-  rm -f "$BIN" "$GUI" "$OSD" "$DESKTOP"
+  rm -f "$BIN" "$GUI" "$OSD" "$DESKTOP" "$ICON" "$SYMBOLIC"
   sudo rm -f "$RULE"
   sudo udevadm control --reload-rules
   if have_gsettings; then
@@ -102,16 +106,16 @@ echo "Installed $BIN"
 
 install -Dm755 studio-brightness-osd "$OSD"
 install -Dm755 studio-brightness-gui "$GUI"
-sed "s|^Exec=.*|Exec=$GUI|" studio-brightness.desktop > "$DESKTOP"
+install -Dm644 data/icons/io.github.mfat.StudioBrightness.svg "$ICON"
+install -Dm644 data/icons/io.github.mfat.StudioBrightness-symbolic.svg "$SYMBOLIC"
+sed "s|^Exec=.*|Exec=$GUI|" data/io.github.mfat.StudioBrightness.desktop > "$DESKTOP"
 echo "Installed $GUI (\"Display Brightness\" in the app menu; needs GTK4 + libadwaita)"
 
-sudo install -Dm644 70-studio-brightness.rules "$RULE"
+sudo install -Dm644 data/70-studio-brightness.rules "$RULE"
 sudo udevadm control --reload-rules
 sudo udevadm trigger --action=add --subsystem-match=hidraw --subsystem-match=backlight
 # Re-run the usbhid -> appledisplay handover for displays already plugged in.
-for iface in /sys/bus/usb/drivers/usbhid/*:*; do
-  [[ -e $iface ]] && sudo udevadm trigger --action=add "$(realpath "$iface")"
-done
+sudo udevadm trigger --action=add --subsystem-match=usb --property-match=DRIVER=usbhid
 sudo udevadm settle
 echo "Installed $RULE"
 

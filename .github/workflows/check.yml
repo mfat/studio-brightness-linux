@@ -1,0 +1,22 @@
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install validators
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y desktop-file-utils appstream
+
+      # Unit tests for the HID descriptor parser, the desktop entry and AppStream
+      # validators, and a syntax check of every script.
+      - name: make check
+        run: make check
