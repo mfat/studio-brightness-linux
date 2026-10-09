@@ -13,9 +13,10 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, GLib, Gtk  # noqa: E402
+from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402
 
 APP_ID = "io.github.mfat.StudioBrightness"
+WEBSITE = "https://github.com/mfat/studio-brightness-linux"
 WRITE_DELAY_MS = 40  # coalesce slider drags into one hardware write per interval
 
 
@@ -92,13 +93,18 @@ class DisplayRow(Adw.ActionRow):
 class Window(Adw.ApplicationWindow):
     def __init__(self, app):
         super().__init__(application=app, title="Studio Brightness",
-                         default_width=520, default_height=1)
+                         default_width=600, default_height=360)
+        self.set_size_request(360, 240)
         self.rows = []
 
         refresh = Gtk.Button(icon_name="view-refresh-symbolic", tooltip_text="Rescan displays")
         refresh.connect("clicked", lambda _b: self.populate())
+        menu = Gio.Menu()
+        menu.append("About Studio Brightness", "app.about")
         header = Adw.HeaderBar()
         header.pack_start(refresh)
+        header.pack_end(Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu,
+                                       primary=True, tooltip_text="Main Menu"))
 
         self.toasts = Adw.ToastOverlay()
         view = Adw.ToolbarView(content=self.toasts)
@@ -122,19 +128,48 @@ class Window(Adw.ApplicationWindow):
                 description="Make sure the display's USB cable is plugged into the computer, "
                             "then press the refresh button."))
             return
+        # PreferencesPage scrolls when there are many displays and keeps rows a readable
+        # width when the window is maximized.
         group = Adw.PreferencesGroup()
         for row in self.rows:
             group.add(row)
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        for side in ("top", "bottom", "start", "end"):
-            getattr(box, f"set_margin_{side}")(18)
-        box.append(group)
-        self.toasts.set_child(box)
+        page = Adw.PreferencesPage()
+        page.add(group)
+        self.toasts.set_child(page)
+
+
+def show_about(app):
+    props = dict(
+        application_name="Studio Brightness",
+        application_icon=APP_ID,
+        developer_name="Mehdi",
+        version=ab.__version__,
+        comments="Brightness control for Apple displays",
+        website=WEBSITE,
+        issue_url=f"{WEBSITE}/issues",
+        license_type=Gtk.License.MIT_X11,
+        copyright="© 2026 Mehdi",
+    )
+    window = app.get_active_window()
+    # Adw.AboutDialog needs libadwaita 1.5; AboutWindow covers 1.4.
+    has_dialog = hasattr(Adw, "AboutDialog")
+    about = Adw.AboutDialog(**props) if has_dialog else Adw.AboutWindow(transient_for=window, **props)
+    about.add_acknowledgement_section("Inspired by", [
+        "Studio Brightness ++ https://github.com/LitteRabbit-37/Studio-Brightness-PlusPlus",
+        "studio-brightness by Sam Johnson https://github.com/sfjohnson/studio-brightness",
+    ])
+    if has_dialog:
+        about.present(None)  # its own window: the app window is too short to host it
+    else:
+        about.present()
 
 
 def main():
     Gtk.Window.set_default_icon_name(APP_ID)
     app = Adw.Application(application_id=APP_ID)
+    about = Gio.SimpleAction(name="about")
+    about.connect("activate", lambda _a, _p: show_about(app))
+    app.add_action(about)
     app.connect("activate", lambda a: (a.get_active_window() or Window(a)).present())
     return app.run(sys.argv)
 
