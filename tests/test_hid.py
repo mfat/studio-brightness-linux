@@ -71,5 +71,24 @@ class Percent(unittest.TestCase):
         self.assertEqual(sb.from_pct(d, 150), 60000)
 
 
+class ParseArgs(unittest.TestCase):
+    def test_options_after_command(self):
+        # The form the README and install.sh's shortcuts use.
+        args = sb.parse_args(["up", "--osd"])
+        self.assertEqual((args.cmd, args.step, args.osd, args.notify), ("up", 10, True, False))
+
+    def test_options_before_command(self):
+        args = sb.parse_args(["--notify", "-d", "hidraw3", "down", "5"])
+        self.assertEqual((args.cmd, args.step, args.notify, args.display),
+                         ("down", 5.0, True, ["hidraw3"]))
+
+    def test_defaults(self):
+        args = sb.parse_args(["list"])
+        self.assertEqual((args.display, args.notify, args.osd), (None, False, False))
+
+    def test_negative_value_is_not_an_option(self):
+        self.assertEqual(sb.parse_args(["set", "-10", "--osd"]).value, "-10")
+
+
 if __name__ == "__main__":
     unittest.main()
